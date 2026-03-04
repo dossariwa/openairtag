@@ -1,36 +1,101 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# OpenAirTag
 
-## Getting Started
+Real-time GPS device tracker. A Next.js dashboard shows enrolled devices on a Mapbox map, with location data stored and streamed via Convex.
 
-First, run the development server:
+## Architecture
+
+```
+tracker/ (Expo mobile app)
+  ├── Requests GPS permission
+  ├── Foreground + background location updates
+  └── POSTs to /gps endpoint
+
+src/ (Next.js web app)
+  ├── /              → Public onboarding (QR code, install links)
+  ├── /gps           → Hidden POST endpoint (receives GPS from tracker)
+  ├── /dashboard     → Device list (auth-protected via Clerk)
+  └── /dashboard/[id]→ Device detail with Mapbox map
+
+convex/
+  ├── schema.ts      → devices, latestLocations, locationHistory tables
+  └── locations.ts   → enrollDevice, ingestLocation, listDevices, getDevice, getDeviceHistory
+```
+
+## Setup
+
+### 1. Install dependencies
+
+```bash
+npm install
+```
+
+### 2. Environment variables
+
+Create `.env.local`:
+
+```bash
+# Convex
+CONVEX_DEPLOYMENT=dev:your-deployment
+NEXT_PUBLIC_CONVEX_URL=https://your-deployment.convex.cloud
+
+# Clerk
+NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=pk_test_...
+CLERK_SECRET_KEY=sk_test_...
+CLERK_JWT_ISSUER_DOMAIN=https://your-domain.clerk.accounts.dev
+
+# Mapbox
+NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN=pk.eyJ...
+
+# GPS ingest secret (shared with tracker app)
+INGEST_SECRET=your-secret-here
+```
+
+### 3. Start Convex dev server
+
+```bash
+npx convex dev
+```
+
+### 4. Start Next.js
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+### 5. Enroll a device
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+Call the `enrollDevice` mutation from the Convex dashboard or CLI:
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```bash
+npx convex run locations:enrollDevice '{"deviceName": "My iPhone", "platform": "ios"}'
+```
 
-## Learn More
+This returns `{ deviceUid, ingestToken }` — enter these in the tracker app.
 
-To learn more about Next.js, take a look at the following resources:
+### 6. Run the tracker app
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+```bash
+cd tracker
+npm install
+npm start
+```
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+Enter the server URL (e.g. `https://your-site.vercel.app`), device UID, and ingest token, then tap "Send Now" or enable background tracking.
 
-## Deploy on Vercel
+## Routes
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+| Route | Auth | Description |
+|---|---|---|
+| `/` | Public | Onboarding page with QR code and install links |
+| `/gps` | Bearer token | Hidden POST endpoint for GPS ingest |
+| `/dashboard` | Clerk | Device list with real-time status |
+| `/dashboard/[deviceUid]` | Clerk | Device detail with Mapbox map |
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## Tech stack
+
+- **Next.js 16** — web dashboard and API
+- **Convex** — real-time database and backend functions
+- **Clerk** — authentication for dashboard access
+- **Mapbox GL** — map rendering
+- **Expo** — iOS/Android tracker app
+- **expo-location + expo-task-manager** — foreground/background GPS

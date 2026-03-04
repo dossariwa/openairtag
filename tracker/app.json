@@ -1,0 +1,45 @@
+{
+  "expo": {
+    "name": "OpenAirTag Tracker",
+    "slug": "openairtag-tracker",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/images/icon.png",
+    "scheme": "openairtag-tracker",
+    "userInterfaceStyle": "automatic",
+    "newArchEnabled": true,
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "com.openairtag.tracker",
+      "infoPlist": {
+        "NSLocationWhenInUseUsageDescription": "OpenAirTag needs your location to track this device on the dashboard.",
+        "NSLocationAlwaysAndWhenInUseUsageDescription": "OpenAirTag uses background location to keep this device trackable when the app is closed.",
+        "UIBackgroundModes": ["location"]
+      }
+    },
+    "android": {
+      "package": "com.openairtag.tracker",
+      "adaptiveIcon": {
+        "backgroundColor": "#000000"
+      },
+      "permissions": [
+        "ACCESS_FINE_LOCATION",
+        "ACCESS_COARSE_LOCATION",
+        "ACCESS_BACKGROUND_LOCATION",
+        "FOREGROUND_SERVICE",
+        "FOREGROUND_SERVICE_LOCATION"
+      ]
+    },
+    "plugins": [
+      "expo-router",
+      [
+        "expo-location",
+        {
+          "locationAlwaysAndWhenInUsePermission": "OpenAirTag uses background location to keep this device trackable.",
+          "isAndroidBackgroundLocationEnabled": true,
+          "isAndroidForegroundServiceEnabled": true
+        }
+      ]
+    ]
+  }
+}

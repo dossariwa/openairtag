@@ -2,6 +2,8 @@
 
 # dependencies
 /node_modules
+/tracker/node_modules
+.npm-cache
 /.pnp
 .pnp.*
 .yarn/*
@@ -39,3 +41,10 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# expo / eas
+/tracker/.expo/
+/tracker/dist/
+*.ipa
+*.apk
+*.aab
