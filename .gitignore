@@ -45,6 +45,12 @@ next-env.d.ts
 # expo / eas
 /tracker/.expo/
 /tracker/dist/
+/tracker/*.keystore
+/tracker/credentials.json
 *.ipa
 *.apk
 *.aab
+
+# hosted binaries (too large for git)
+/public/downloads/*.apk
+/public/downloads/*.ipa

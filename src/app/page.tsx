@@ -2,6 +2,10 @@
 
 import { useEffect, useState } from "react";
 import { Smartphone, Monitor, Apple } from "lucide-react";
+import { QRCodeSVG } from "qrcode.react";
+
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://openairtag.vercel.app";
+const ANDROID_APK_URL = `${SITE_URL}/downloads/openairtag-tracker.apk`;
 
 type DetectedPlatform = "ios" | "android" | "desktop";
 
@@ -30,7 +34,7 @@ export default function OnboardingPage() {
           Track your devices in real time.
         </p>
 
-        {/* Logo placeholder */}
+        {/* Logo */}
         <div className="mx-auto mt-8 flex h-24 w-24 items-center justify-center rounded-2xl bg-zinc-900 text-white">
           <svg
             xmlns="http://www.w3.org/2000/svg"
@@ -48,8 +52,8 @@ export default function OnboardingPage() {
         </div>
 
         {/* QR Code */}
-        <div className="mx-auto mt-10 flex h-48 w-48 items-center justify-center rounded-xl border-2 border-dashed border-zinc-300 bg-white">
-          <span className="text-xs text-zinc-400">QR Code</span>
+        <div className="mx-auto mt-10 flex h-52 w-52 items-center justify-center rounded-xl border border-zinc-200 bg-white p-3">
+          <QRCodeSVG value={SITE_URL} size={180} level="M" />
         </div>
         <p className="mt-3 text-sm text-zinc-400">
           Scan to install the tracker app
@@ -71,18 +75,21 @@ export default function OnboardingPage() {
             label="iOS"
             href="#"
             highlighted={platform === "ios"}
+            note="Coming soon"
           />
           <PlatformCard
             icon={<Smartphone className="h-6 w-6" />}
             label="Android"
-            href="#"
+            href={ANDROID_APK_URL}
             highlighted={platform === "android"}
+            note="Download APK"
           />
           <PlatformCard
             icon={<Monitor className="h-6 w-6" />}
             label="PC / Laptop"
-            href="#"
+            href="/dashboard"
             highlighted={platform === "desktop"}
+            note="Open dashboard"
           />
         </div>
 
@@ -93,6 +100,12 @@ export default function OnboardingPage() {
               {platform === "ios" ? "iOS" : "Android"}
             </span>
             .
+          </p>
+        )}
+
+        {platform === "android" && (
+          <p className="mt-2 text-xs text-zinc-400">
+            You may need to allow &quot;Install from unknown sources&quot; in your Android settings.
           </p>
         )}
 
@@ -113,11 +126,13 @@ function PlatformCard({
   label,
   href,
   highlighted,
+  note,
 }: {
   icon: React.ReactNode;
   label: string;
   href: string;
   highlighted: boolean;
+  note?: string;
 }) {
   return (
     <a
@@ -130,6 +145,11 @@ function PlatformCard({
     >
       {icon}
       <span className="text-xs font-semibold">{label}</span>
+      {note && (
+        <span className={`text-[10px] ${highlighted ? "text-zinc-400" : "text-zinc-400"}`}>
+          {note}
+        </span>
+      )}
     </a>
   );
 }
