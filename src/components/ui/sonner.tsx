@@ -30,8 +30,14 @@ const Toaster = ({ ...props }: ToasterProps) => {
           "--normal-text": "var(--popover-foreground)",
           "--normal-border": "var(--border)",
           "--border-radius": "var(--radius)",
+          "--description-color": "var(--muted-foreground)",
         } as React.CSSProperties
       }
+      toastOptions={{
+        classNames: {
+          description: "!text-zinc-600 dark:!text-zinc-400",
+        },
+      }}
       {...props}
     />
   )
