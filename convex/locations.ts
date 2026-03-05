@@ -14,17 +14,23 @@ function generateId(prefix: string) {
 
 export const enrollDevice = mutation({
   args: {
+    deviceUid: v.string(),
+    ingestToken: v.string(),
     deviceName: v.string(),
     platform: PLATFORM_VALIDATOR,
   },
   handler: async (ctx, args) => {
-    const deviceUid = generateId("dev");
-    const ingestToken = generateId("ing");
-    const now = Date.now();
+    const existing = await ctx.db
+      .query("devices")
+      .withIndex("by_device_uid", (q) => q.eq("deviceUid", args.deviceUid))
+      .first();
 
+    if (existing) return { deviceUid: existing.deviceUid, ingestToken: existing.ingestToken };
+
+    const now = Date.now();
     await ctx.db.insert("devices", {
-      deviceUid,
-      ingestToken,
+      deviceUid: args.deviceUid,
+      ingestToken: args.ingestToken,
       deviceName: args.deviceName,
       platform: args.platform,
       trackingEnabled: true,
@@ -34,7 +40,7 @@ export const enrollDevice = mutation({
       updatedAt: now,
     });
 
-    return { deviceUid, ingestToken };
+    return { deviceUid: args.deviceUid, ingestToken: args.ingestToken };
   },
 });
 
