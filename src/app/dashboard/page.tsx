@@ -1,12 +1,33 @@
 "use client";
 
+import { useEffect, useRef } from "react";
 import { useQuery } from "convex/react";
 import { api } from "../../../convex/_generated/api";
 import Link from "next/link";
 import { MapPin, Smartphone } from "lucide-react";
+import { toast } from "sonner";
 
 export default function DashboardPage() {
   const devices = useQuery(api.locations.listDevices);
+  const knownUids = useRef<Set<string> | null>(null);
+
+  useEffect(() => {
+    if (!devices) return;
+
+    if (knownUids.current === null) {
+      knownUids.current = new Set(devices.map((d) => d.deviceUid));
+      return;
+    }
+
+    for (const device of devices) {
+      if (!knownUids.current.has(device.deviceUid)) {
+        knownUids.current.add(device.deviceUid);
+        toast.success("New device", {
+          description: `${device.deviceName} (${device.platform}) is now being tracked.`,
+        });
+      }
+    }
+  }, [devices]);
 
   return (
     <div className="min-h-screen bg-zinc-50">
