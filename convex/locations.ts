@@ -139,6 +139,33 @@ export const getDevice = query({
   },
 });
 
+export const deleteDevice = mutation({
+  args: { deviceUid: v.string() },
+  handler: async (ctx, args) => {
+    const device = await ctx.db
+      .query("devices")
+      .withIndex("by_device_uid", (q) => q.eq("deviceUid", args.deviceUid))
+      .first();
+    if (!device) return;
+
+    await ctx.db.delete(device._id);
+
+    const latest = await ctx.db
+      .query("latestLocations")
+      .withIndex("by_device_uid", (q) => q.eq("deviceUid", args.deviceUid))
+      .first();
+    if (latest) await ctx.db.delete(latest._id);
+
+    const history = await ctx.db
+      .query("locationHistory")
+      .withIndex("by_device_uid", (q) => q.eq("deviceUid", args.deviceUid))
+      .collect();
+    for (const row of history) {
+      await ctx.db.delete(row._id);
+    }
+  },
+});
+
 export const getDeviceHistory = query({
   args: {
     deviceUid: v.string(),

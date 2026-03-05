@@ -1,14 +1,21 @@
 "use client";
 
-import { useEffect, useRef } from "react";
-import { useQuery } from "convex/react";
+import { useEffect, useRef, useCallback } from "react";
+import { useQuery, useMutation } from "convex/react";
 import { api } from "../../../convex/_generated/api";
 import Link from "next/link";
-import { MapPin, Smartphone } from "lucide-react";
+import { MapPin, Smartphone, MoreVertical, Trash2 } from "lucide-react";
 import { toast } from "sonner";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 export default function DashboardPage() {
   const devices = useQuery(api.locations.listDevices);
+  const deleteDevice = useMutation(api.locations.deleteDevice);
   const knownUids = useRef<Set<string> | null>(null);
 
   useEffect(() => {
@@ -28,6 +35,21 @@ export default function DashboardPage() {
       }
     }
   }, [devices]);
+
+  const handleDelete = useCallback(
+    async (deviceUid: string, deviceName: string) => {
+      try {
+        await deleteDevice({ deviceUid });
+        knownUids.current?.delete(deviceUid);
+        toast.success("Device deleted", {
+          description: `${deviceName} has been removed.`,
+        });
+      } catch {
+        toast.error("Failed to delete device");
+      }
+    },
+    [deleteDevice],
+  );
 
   return (
     <div className="min-h-screen bg-zinc-50">
@@ -55,14 +77,19 @@ export default function DashboardPage() {
           )}
 
           {devices?.map((device) => (
-            <Link
+            <div
               key={device.deviceUid}
-              href={`/dashboard/${device.deviceUid}`}
-              className="group flex gap-4 rounded-xl border border-zinc-200 bg-white p-4 transition hover:border-zinc-400 hover:shadow-sm"
+              className="group relative flex gap-4 rounded-xl border border-zinc-200 bg-white p-4 transition hover:border-zinc-400 hover:shadow-sm"
             >
+              <Link
+                href={`/dashboard/${device.deviceUid}`}
+                className="absolute inset-0 z-0 rounded-xl"
+              />
+
               <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-zinc-100 text-zinc-600 group-hover:bg-zinc-900 group-hover:text-white">
                 <Smartphone className="h-5 w-5" />
               </div>
+
               <div className="min-w-0 flex-1">
                 <p className="truncate font-semibold text-zinc-900">{device.deviceName}</p>
                 <p className="text-xs text-zinc-500 uppercase">{device.platform}</p>
@@ -80,7 +107,28 @@ export default function DashboardPage() {
                   {device.lastSeenAt ? new Date(device.lastSeenAt).toLocaleString() : "Never"}
                 </p>
               </div>
-            </Link>
+
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <button
+                    type="button"
+                    className="relative z-10 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-zinc-400 hover:bg-zinc-100 hover:text-zinc-700"
+                    onClick={(e) => e.preventDefault()}
+                  >
+                    <MoreVertical className="h-4 w-4" />
+                  </button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem
+                    className="text-red-600 focus:text-red-600"
+                    onClick={() => handleDelete(device.deviceUid, device.deviceName)}
+                  >
+                    <Trash2 className="mr-2 h-4 w-4" />
+                    Delete device
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
           ))}
         </div>
       </main>
