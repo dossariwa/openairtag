@@ -2,8 +2,8 @@ import * as Location from "expo-location";
 import * as TaskManager from "expo-task-manager";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import Constants from "expo-constants";
-import { useEffect, useState, useCallback } from "react";
-import { Platform, Pressable, SafeAreaView, StyleSheet, Text, View } from "react-native";
+import { useEffect, useState, useCallback, useRef } from "react";
+import { Alert, Platform, Pressable, SafeAreaView, StyleSheet, Text, View } from "react-native";
 
 const SERVER_URL = "https://openairtag.vercel.app";
 const BG_TASK = "openairtag-bg-location";
@@ -67,41 +67,8 @@ TaskManager.defineTask(BG_TASK, async ({ data, error }) => {
   }
 });
 
-export default function TrackerScreen() {
-  const [granted, setGranted] = useState(false);
-  const [tracking, setTracking] = useState(false);
-  const [status, setStatus] = useState("");
-
-  useEffect(() => {
-    (async () => {
-      const fg = await Location.getForegroundPermissionsAsync();
-      if (fg.granted) {
-        setGranted(true);
-        const running = await TaskManager.isTaskRegisteredAsync(BG_TASK);
-        if (running) setTracking(true);
-      }
-    })();
-  }, []);
-
-  const handleAllow = useCallback(async () => {
-    const fg = await Location.requestForegroundPermissionsAsync();
-    if (!fg.granted) {
-      setStatus("Location permission denied.");
-      return;
-    }
-
-    const bg = await Location.requestBackgroundPermissionsAsync();
-    if (!bg.granted) {
-      setStatus("Background location not granted. Tracking may stop when app is closed.");
-    }
-
-    setGranted(true);
-    setStatus("Starting tracker...");
-
-    const identity = await getOrCreateIdentity();
-    const loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.High });
-    await postLocation(identity, loc);
-
+async function startBackgroundTracking(): Promise<boolean> {
+  try {
     await Location.startLocationUpdatesAsync(BG_TASK, {
       accuracy: Location.Accuracy.Balanced,
       timeInterval: 15_000,
@@ -112,10 +79,103 @@ export default function TrackerScreen() {
         notificationBody: "Tracking active",
       },
     });
+    return true;
+  } catch {
+    return false;
+  }
+}
 
-    setTracking(true);
-    setStatus("Tracking active");
+export default function TrackerScreen() {
+  const [granted, setGranted] = useState(false);
+  const [tracking, setTracking] = useState(false);
+  const [status, setStatus] = useState("");
+  const fgInterval = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const fg = await Location.getForegroundPermissionsAsync();
+        if (fg.granted) {
+          setGranted(true);
+          try {
+            const running = await TaskManager.isTaskRegisteredAsync(BG_TASK);
+            if (running) {
+              setTracking(true);
+              setStatus("Background tracking active");
+              return;
+            }
+          } catch {}
+          startForegroundPolling();
+          setTracking(true);
+          setStatus("Foreground tracking active");
+        }
+      } catch {}
+    })();
+    return () => {
+      if (fgInterval.current) clearInterval(fgInterval.current);
+    };
   }, []);
+
+  const startForegroundPolling = useCallback(() => {
+    if (fgInterval.current) return;
+    fgInterval.current = setInterval(async () => {
+      try {
+        const identity = await getOrCreateIdentity();
+        const loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
+        await postLocation(identity, loc);
+      } catch {}
+    }, 15_000);
+  }, []);
+
+  const handleAllow = useCallback(async () => {
+    try {
+      const fg = await Location.requestForegroundPermissionsAsync();
+      if (!fg.granted) {
+        setStatus("Location permission denied.");
+        return;
+      }
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : String(e);
+      if (msg.includes("NSLocation")) {
+        Alert.alert(
+          "Development Build Required",
+          "Background location on iOS requires a development build, not Expo Go. Foreground tracking will still work.",
+        );
+      } else {
+        setStatus(`Permission error: ${msg}`);
+        return;
+      }
+    }
+
+    setGranted(true);
+    setStatus("Getting location...");
+
+    try {
+      const identity = await getOrCreateIdentity();
+      const loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.High });
+      await postLocation(identity, loc);
+      setStatus("Location sent!");
+    } catch (e: unknown) {
+      setStatus(`Location error: ${e instanceof Error ? e.message : String(e)}`);
+    }
+
+    let bgStarted = false;
+    try {
+      const bg = await Location.requestBackgroundPermissionsAsync();
+      if (bg.granted) {
+        bgStarted = await startBackgroundTracking();
+      }
+    } catch {}
+
+    if (bgStarted) {
+      setTracking(true);
+      setStatus("Background tracking active");
+    } else {
+      startForegroundPolling();
+      setTracking(true);
+      setStatus("Foreground tracking active (background unavailable)");
+    }
+  }, [startForegroundPolling]);
 
   return (
     <SafeAreaView style={s.safe}>
