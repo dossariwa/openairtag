@@ -55,7 +55,7 @@ export default function DeviceDetailPage() {
     : undefined;
 
   return (
-    <div className="min-h-screen bg-zinc-50" key={refreshKey}>
+    <div className="min-h-screen bg-zinc-50" key={`device-${refreshKey}`}>
       <header className="border-b border-zinc-200 bg-white">
         <div className="mx-auto flex max-w-5xl items-center gap-4 px-6 py-4">
           <Link
