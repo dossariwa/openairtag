@@ -1,8 +1,6 @@
 import { ConvexHttpClient } from "convex/browser";
-import { api } from "../../../convex/_generated/api";
+import { api } from "@convex/_generated/api";
 import { NextRequest, NextResponse } from "next/server";
-
-const convex = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL!);
 
 function detectPlatform(ua: string): "ios" | "android" | "web" | "unknown" {
   const lower = ua.toLowerCase();
@@ -13,9 +11,14 @@ function detectPlatform(ua: string): "ios" | "android" | "web" | "unknown" {
 }
 
 export async function POST(req: NextRequest) {
+  if (!process.env.NEXT_PUBLIC_CONVEX_URL) {
+    return NextResponse.json({ error: "Service unavailable" }, { status: 503 });
+  }
+  const convex = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL);
   let body: Record<string, unknown>;
   try {
     body = await req.json();
+    if (!body || Array.isArray(body) || typeof body !== "object") throw new Error("Invalid body");
   } catch {
     return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
   }
@@ -45,8 +48,8 @@ export async function POST(req: NextRequest) {
   };
 
   if (
-    !deviceUid ||
-    !ingestToken ||
+    typeof deviceUid !== "string" || !deviceUid ||
+    typeof ingestToken !== "string" || !ingestToken ||
     typeof latitude !== "number" ||
     typeof longitude !== "number" ||
     typeof timestamp !== "number"
@@ -78,8 +81,7 @@ export async function POST(req: NextRequest) {
     });
 
     return NextResponse.json({ ok: true });
-  } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : "Ingest failed";
-    return NextResponse.json({ error: message }, { status: 422 });
+  } catch {
+    return NextResponse.json({ error: "Unable to accept location" }, { status: 422 });
   }
 }

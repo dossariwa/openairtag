@@ -2,8 +2,9 @@
 
 import { useEffect, useRef, useCallback } from "react";
 import { useQuery, useMutation } from "convex/react";
-import { api } from "../../../convex/_generated/api";
+import { api } from "@convex/_generated/api";
 import Link from "next/link";
+import { PairDevice } from "@/components/pair-device";
 import { MapPin, Smartphone, MoreVertical, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import {
@@ -68,6 +69,8 @@ export default function DashboardPage() {
           Devices with installed GPS trackers appear here in real time.
         </p>
 
+        <div className="mt-5"><Link href="/dashboard/shares" className="inline-flex min-h-11 items-center rounded-lg bg-zinc-900 px-4 py-2 text-sm font-medium text-white">Voluntary location sharing</Link></div>
+        <PairDevice />
         <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {devices === undefined && (
             <p className="col-span-full text-sm text-zinc-400">Loading...</p>
@@ -112,6 +115,7 @@ export default function DashboardPage() {
                 <DropdownMenuTrigger asChild>
                   <button
                     type="button"
+                    aria-label={`Options for ${device.deviceName}`}
                     className="relative z-10 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-zinc-400 hover:bg-zinc-100 hover:text-zinc-700"
                     onClick={(e) => e.preventDefault()}
                   >

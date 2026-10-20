@@ -2,7 +2,7 @@
 
 import { useParams } from "next/navigation";
 import { useQuery } from "convex/react";
-import { api } from "../../../../convex/_generated/api";
+import { api } from "@convex/_generated/api";
 import Map from "@/components/map";
 import Link from "next/link";
 import { ArrowLeft, RefreshCw } from "lucide-react";

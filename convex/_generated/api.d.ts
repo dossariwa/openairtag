@@ -10,6 +10,9 @@
 
 import type * as auth from "../auth.js";
 import type * as locations from "../locations.js";
+import type * as sharing from "../sharing.js";
+import type * as sharingModel from "../sharingModel.js";
+import type * as subscriptions from "../subscriptions.js";
 import type * as users from "../users.js";
 
 import type {
@@ -21,6 +24,9 @@ import type {
 declare const fullApi: ApiFromModules<{
   auth: typeof auth;
   locations: typeof locations;
+  sharing: typeof sharing;
+  sharingModel: typeof sharingModel;
+  subscriptions: typeof subscriptions;
   users: typeof users;
 }>;
 

@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useSyncExternalStore } from "react";
+import Link from "next/link";
 import { Smartphone, Monitor, Apple } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
 
@@ -17,12 +18,11 @@ function detectPlatform(): DetectedPlatform {
   return "desktop";
 }
 
-export default function OnboardingPage() {
-  const [platform, setPlatform] = useState<DetectedPlatform>("desktop");
+const subscribePlatform = () => () => {};
+const serverPlatform = (): DetectedPlatform => "desktop";
 
-  useEffect(() => {
-    setPlatform(detectPlatform());
-  }, []);
+export default function OnboardingPage() {
+  const platform = useSyncExternalStore(subscribePlatform, detectPlatform, serverPlatform);
 
   return (
     <div className="flex min-h-screen flex-col items-center justify-center bg-zinc-50 px-6 py-16">
@@ -110,12 +110,12 @@ export default function OnboardingPage() {
         )}
 
         {/* Dashboard link */}
-        <a
+        <Link
           href="/dashboard"
           className="mt-10 inline-block rounded-lg bg-zinc-900 px-6 py-3 text-sm font-semibold text-white transition hover:bg-zinc-800"
         >
           Open Dashboard
-        </a>
+        </Link>
       </div>
     </div>
   );

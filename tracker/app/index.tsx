@@ -3,7 +3,7 @@ import * as TaskManager from "expo-task-manager";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import Constants from "expo-constants";
 import { useEffect, useState, useCallback, useRef } from "react";
-import { Alert, Platform, Pressable, SafeAreaView, StyleSheet, Text, View } from "react-native";
+import { Alert, AppState, Modal, Platform, Pressable, SafeAreaView, ScrollView, StyleSheet, Text, View } from "react-native";
 
 const SERVER_URL = "https://openairtag.vercel.app";
 const BG_TASK = "openairtag-bg-location";
@@ -89,7 +89,40 @@ export default function TrackerScreen() {
   const [granted, setGranted] = useState(false);
   const [tracking, setTracking] = useState(false);
   const [status, setStatus] = useState("");
+  const [pairingIdentity, setPairingIdentity] = useState<DeviceIdentity | null>(null);
+  const [pairingLoading, setPairingLoading] = useState(false);
   const fgInterval = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  useEffect(() => {
+    const subscription = AppState.addEventListener("change", (state) => {
+      if (state !== "active") setPairingIdentity(null);
+    });
+    return () => subscription.remove();
+  }, []);
+
+  const showPairingDetails = useCallback(async () => {
+    setPairingLoading(true);
+    try {
+      const raw = await AsyncStorage.getItem(DEVICE_KEY);
+      if (!raw) {
+        Alert.alert("No pairing details yet", "Start tracking on this device first, then use its pairing details to connect it to your dashboard account.");
+        return;
+      }
+      const identity: unknown = JSON.parse(raw);
+      if (!identity || typeof identity !== "object" || !("deviceUid" in identity) || !("ingestToken" in identity)
+        || typeof identity.deviceUid !== "string" || typeof identity.ingestToken !== "string"
+        || !identity.deviceUid || !identity.ingestToken) {
+        throw new Error("Pairing details unavailable");
+      }
+      if (AppState.currentState === "active") {
+        setPairingIdentity({ deviceUid: identity.deviceUid, ingestToken: identity.ingestToken });
+      }
+    } catch {
+      Alert.alert("Pairing details unavailable", "Could not read this device’s existing pairing details. Please try again.");
+    } finally {
+      setPairingLoading(false);
+    }
+  }, []);
 
   useEffect(() => {
     (async () => {
@@ -197,10 +230,43 @@ export default function TrackerScreen() {
           )}
 
           {status !== "" && <Text style={s.statusText}>{status}</Text>}
+          <Pressable
+            accessibilityRole="button"
+            accessibilityState={{ disabled: pairingLoading }}
+            style={s.pairingButton}
+            disabled={pairingLoading}
+            onPress={showPairingDetails}
+          >
+            <Text style={s.pairingButtonText}>{pairingLoading ? "Loading pairing details…" : "Show pairing details"}</Text>
+          </Pressable>
         </View>
 
         <Text style={s.footer}>OpenAirTag @ 2026</Text>
       </View>
+      <Modal
+        transparent
+        visible={pairingIdentity !== null}
+        animationType="fade"
+        onRequestClose={() => setPairingIdentity(null)}
+      >
+        <View style={s.pairingOverlay}>
+          <SafeAreaView style={s.pairingSheet}>
+            <ScrollView contentContainerStyle={s.pairingContent}>
+              <Text accessibilityRole="header" style={s.pairingTitle}>Pair this device</Text>
+              <Text style={s.pairingExplanation}>
+                Enter these details in Pair device on your OpenAirTag dashboard. Share them only with the dashboard account owner who should see this device’s location.
+              </Text>
+              <Text style={s.pairingLabel}>Device ID</Text>
+              <Text selectable style={s.pairingValue}>{pairingIdentity?.deviceUid}</Text>
+              <Text style={s.pairingLabel}>Pairing token</Text>
+              <Text selectable style={s.pairingValue}>{pairingIdentity?.ingestToken}</Text>
+              <Pressable accessibilityRole="button" style={s.btn} onPress={() => setPairingIdentity(null)}>
+                <Text style={s.btnText}>Hide pairing details</Text>
+              </Pressable>
+            </ScrollView>
+          </SafeAreaView>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -232,4 +298,13 @@ const s = StyleSheet.create({
   statusLabel: { fontSize: 15, fontWeight: "600", color: "#3f3f46" },
   statusText: { fontSize: 13, color: "#71717a", textAlign: "center", paddingHorizontal: 30 },
   footer: { fontSize: 12, color: "#a1a1aa" },
+  pairingButton: { paddingHorizontal: 20, paddingVertical: 12, borderRadius: 12, borderWidth: 1, borderColor: "#a1a1aa" },
+  pairingButtonText: { color: "#3f3f46", fontSize: 14, fontWeight: "600" },
+  pairingOverlay: { flex: 1, justifyContent: "center", alignItems: "center", padding: 24, backgroundColor: "rgba(0, 0, 0, 0.45)" },
+  pairingSheet: { width: "100%", maxWidth: 420, maxHeight: "90%", backgroundColor: "#fff", borderRadius: 20 },
+  pairingContent: { padding: 24, gap: 16 },
+  pairingTitle: { fontSize: 24, fontWeight: "700", color: "#18181b" },
+  pairingExplanation: { fontSize: 14, lineHeight: 21, color: "#52525b" },
+  pairingLabel: { fontSize: 14, fontWeight: "600", color: "#3f3f46" },
+  pairingValue: { fontSize: 15, lineHeight: 22, color: "#18181b", backgroundColor: "#f4f4f5", padding: 12, borderRadius: 8 },
 });
